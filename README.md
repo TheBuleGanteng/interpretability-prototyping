@@ -51,7 +51,7 @@ This transformation makes it possible to see what an LLM is "thinking about" whe
 **Key Achievements:**
 - Successfully loaded GPT-2 small (768-dimensional activations)
 - Loaded pre-trained SAE (24,576 features with 32x expansion)
-- Extracted activations from layer 6 residual stream
+- Extracted activations from Layer 6 residual stream (`blocks.6.hook_resid_pre`)
 - Achieved 87.35% sparsity (only 3,108/24,576 features active)
 - Investigated Feature #10399 using Neuronpedia
 - Saved activation cache for future use
