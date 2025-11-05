@@ -97,7 +97,7 @@ This transformation makes it possible to see what an LLM is "thinking about" whe
 - **Strongest Feature**: Feature #10399 (max activation 16.85) - activates on legal text, greetings, and formal language
 - **Most Frequent Feature**: Feature #174 (active in 69/70 texts) - extremely general background feature
 - **Most Selective Feature**: Feature #174 (strong in only 1/70 texts) - rare but impactful activation
-- **Category Specialists**: Found 1 true specialist - Feature #18522 for Math (7/10 strong activations in Math, only 1/60 outside)
+- **Category Specialists**: Found 1 true specialist - Feature #18522 for Math (strong activations in 7/10 Math texts and only 1/60 non-Math texts)
 
 **Key Insights:**
 - Most features in the pre-trained SAE (6-res-jb, layer 6 residual stream) are general-purpose
