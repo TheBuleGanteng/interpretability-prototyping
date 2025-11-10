@@ -23,6 +23,7 @@ This transformation makes it possible to see what an LLM is "thinking about" whe
 
 ✅ **Phase 1: Initial Setup & Exploration** - COMPLETED (2025-10-23)
 ✅ **Phase 2: Feature Exploration & Analysis** - COMPLETED (2025-11-05)
+🔄 **Phase 3: SAE Comparison & Advanced Analysis** - IN PROGRESS (2025-11-10)
 
 ---
 
@@ -45,8 +46,6 @@ This transformation makes it possible to see what an LLM is "thinking about" whe
 - [x] Investigate specific features and their meanings
 - [x] Extract activations from sample texts
 - [x] Cache activations to disk for reuse
-
-**Duration:** ~6 hours
 
 **Key Achievements:**
 - Successfully loaded GPT-2 small (768-dimensional activations)
@@ -83,8 +82,6 @@ This transformation makes it possible to see what an LLM is "thinking about" whe
 - [x] Find features for specific concepts (with activation strength weighting)
 - [x] Integrate Neuronpedia links throughout analysis
 - [x] Implement SAE selection mechanism for comparing different decompositions
-
-**Duration:** ~8 hours
 
 **Key Achievements:**
 
@@ -131,22 +128,70 @@ This transformation makes it possible to see what an LLM is "thinking about" whe
 
 ---
 
-### Phase 3: SAE Comparison & Advanced Analysis (PLANNED)
+### Phase 3: SAE Comparison & Advanced Analysis 🔄 IN PROGRESS
 **Goal:** Compare multiple pre-trained SAEs and understand how training affects feature specialization
 
 **Tasks:**
-- [ ] Load and test multiple SAEs (different layers, different training runs)
-- [ ] Run Phase 2 analysis pipeline on each SAE
+- [x] Load and test multiple SAEs (layers 6, 8, 10, 11 residual stream)
+- [x] Run Phase 2 analysis pipeline on each SAE
+- [x] Build comprehensive comparison framework with helper functions
+- [x] Create HTML comparison table showing all SAE results side-by-side
+- [x] Generate detailed per-SAE text output with Neuronpedia links
+- [x] Create DataFrame visualizations showing top 3 strongest features per SAE
+- [ ] Generate heatmap visualizations for each SAE (similar to Phase 2)
 - [ ] Compare specialist features across SAEs
-- [ ] Analyze which SAE architectures/training produce better specialists
-- [ ] Document differences in feature interpretability
-
-**Expected Duration:** 3-4 hours
+- [ ] Analyze which SAE architectures/layers produce better specialists
+- [ ] Document differences in feature interpretability across layers
 
 **Key Questions:**
-- Do deeper layers (8, 10) learn more specialized features than layer 6?
-- Do MLP-output SAEs differ from residual-stream SAEs?
-- Can we find code specialists, emoji specialists, or other domain experts?
+- Do deeper layers (8, 10, 11) learn more specialized features than layer 6?
+- Do different layers show qualitatively different feature types?
+- Why do all tested residual stream SAEs show 0 specialists?
+- Would MLP-output or attention-output SAEs show more specialization?
+
+**Progress So Far:**
+
+**SAE Comparison Framework:**
+- Implemented modular helper functions: `analyze_strongest()`, `analyze_frequent()`, `analyze_selective()`, `analyze_specialists()`
+- Created `extract_features()` function for consistent feature extraction across SAEs
+- Built `display_comparison_table()` with HTML rendering for clear cross-SAE comparison
+- Added `neuronpedia_link()` helper for consistent link generation
+
+**SAEs Tested:**
+- Layer 6 Residual Stream (`blocks.6.hook_resid_pre`)
+- Layer 8 Residual Stream (`blocks.8.hook_resid_pre`)
+- Layer 10 Residual Stream (`blocks.10.hook_resid_pre`)
+- Layer 11 Residual Stream (`blocks.11.hook_resid_pre`)
+
+**Analysis Pipeline:**
+- Strongest feature analysis (top 5 per SAE)
+- Most frequent feature analysis (top 5 per SAE)
+- Most selective feature analysis (top 5 per SAE)
+- Category specialist search across 7 categories
+
+**Visualization Outputs:**
+- HTML comparison table with clickable Neuronpedia links
+- Per-SAE detailed text output with statistics
+- DataFrame showing top 10 activating texts for top 3 strongest features per SAE
+- Summary table showing specialist counts (0/7 for all SAEs tested)
+
+**Key Findings:**
+- **No specialists found:** All 4 residual stream SAEs (layers 6, 8, 10, 11) showed 0/7 category specialists with positive scores
+- **General features dominate:** These SAEs appear to learn general-purpose features that work across text types
+- **Layer depth doesn't guarantee specialization:** Deeper layers (10, 11) didn't show more specialists than earlier layers (6, 8)
+- **Residual stream hypothesis:** Because residual streams contain accumulated information from all previous layers, they may inherently favor general features over specialists
+
+**Technical Improvements:**
+- Modular analysis functions allow easy testing of new SAEs
+- Consistent feature extraction across different hook points
+- HTML tables provide clear side-by-side comparison
+- DataFrame deep-dives allow investigation of individual feature behavior
+
+**Next Steps:**
+- Generate heatmaps for each SAE to visualize activation patterns
+- Test MLP-output and attention-output SAEs (not just residual stream)
+- Lower specialist threshold or try alternative specialist metrics
+- Investigate qualitative differences between layer features even without specialists
 
 ---
 
@@ -165,8 +210,6 @@ This transformation makes it possible to see what an LLM is "thinking about" whe
 - [ ] Monitor training metrics (loss, sparsity, reconstruction quality)
 - [ ] Compare custom SAE performance to pre-trained versions
 - [ ] Tune hyperparameters (L1 coefficient, learning rate, SAE width)
-
-**Expected Duration:** 4-6 hours
 
 **Key Hyperparameters:**
 - `d_model`: Input dimension (e.g., 768 for GPT-2 small)
@@ -190,8 +233,6 @@ This transformation makes it possible to see what an LLM is "thinking about" whe
 - [ ] Write comprehensive documentation
 - [ ] Add example outputs and visualizations to README
 - [ ] (Optional) Build simple Streamlit/Gradio interface
-
-**Expected Duration:** 3-4 hours
 
 ---
 
@@ -534,6 +575,12 @@ jupyter notebook
 
 **Specialist Score**: (strong activations inside category) - (strong activations outside category). Positive scores indicate true specialists.
 
+**Gradient**: The derivative of loss with respect to a parameter (weight), indicating how much the loss changes when that parameter changes. Gradients point in the direction of steepest increase in loss; training moves in the opposite direction to minimize loss.
+
+**Residual Connection**: A skip connection that adds the input of a layer to its output (x_new = x_old + f(x_old)), preserving information flow and enabling training of deep networks.
+
+**Random Seed**: A starting value for pseudorandom number generation that makes "random" results reproducible. The same seed produces the same sequence of "random" numbers.
+
 ---
 
 ## Learning Resources
@@ -556,8 +603,58 @@ jupyter notebook
 
 ## Progress Log
 
+### [2025-11-10] - Phase 3 Started 🔄
+
+**SAE Loading:**
+- Downloaded and configured 4 SAEs from different layers (6, 8, 10, 11)
+- All from residual stream hook points (`blocks.X.hook_resid_pre`)
+- Successfully loaded and tested each SAE with 70-text diverse dataset
+
+**Analysis Framework:**
+- Built modular helper functions for consistent analysis across SAEs
+- `analyze_strongest()` - finds features with highest max activation
+- `analyze_frequent()` - finds features active in most texts
+- `analyze_selective()` - finds features with high activation but rare occurrence
+- `analyze_specialists()` - searches for category-specific features
+- `extract_features()` - consistent feature extraction across different hook points
+
+**Visualization System:**
+- Created HTML comparison table with side-by-side SAE results
+- Implemented detailed per-SAE text output with statistics
+- Built DataFrame views showing top 10 activating texts for strongest features
+- Integrated Neuronpedia links throughout all outputs
+
+**Key Finding - No Specialists:**
+- All 4 residual stream SAEs showed 0/7 category specialists (score > 0)
+- Tested across 7 categories: Python, URLs, Math, Non-English, Social, Formal, Conversational
+- Suggests residual stream SAEs favor general-purpose features over domain specialists
+- Hypothesis: Accumulated information in residual stream makes specialization difficult
+
+**Interpretability Insights:**
+- Layer depth alone doesn't guarantee more specialized features
+- Residual stream SAEs may be inherently biased toward general features
+- Specialist threshold (score > 0) may be too strict for these decompositions
+- Need to test alternative SAE types (MLP output, attention output) for comparison
+
+**Technical Achievements:**
+- Scalable framework for testing additional SAEs
+- Comprehensive comparison infrastructure
+- Clear visualization of cross-SAE differences
+- Reproducible analysis pipeline
+
+**Conceptual Learning:**
+- Deepened understanding of gradients, backpropagation, and optimization
+- Learned distinction between residual stream, MLP output, and attention output
+- Understood role of random seeds in reproducibility vs. exploration
+- Explored local vs. global minima in neural network training
+
+**Next Tasks:**
+- Generate heatmap visualizations for each SAE
+- Test MLP-output and attention-output SAEs
+- Compare qualitative feature differences across layers
+- Investigate alternative specialist metrics
+
 ### [2025-11-05] - Phase 2 Completion ✅
-**Duration**: ~8 hours
 
 **Dataset Construction:**
 - Created 70-text diverse dataset across 7 categories
@@ -604,7 +701,6 @@ jupyter notebook
 - Wanted SAE comparison → built selection framework
 
 ### [2025-10-23] - Phase 1 Completion ✅
-**Duration**: ~6 hours
 
 **Setup:**
 - Created repository structure
