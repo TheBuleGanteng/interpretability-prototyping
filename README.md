@@ -19,6 +19,109 @@ This transformation makes it possible to see what an LLM is "thinking about" whe
 3. Explore which features activate for different inputs
 4. Create a foundation for more advanced interpretability experiments
 
+---
+
+## Getting Started
+
+### Prerequisites
+- Python 3.9+
+- 8GB+ RAM
+- Internet connection for initial model/SAE downloads
+
+### 1. Clone the Repository
+```bash
+git clone <repository-url>
+cd interpretability-prototyping
+```
+
+### 2. Create and Activate Virtual Environment
+```bash
+# Create virtual environment
+python3 -m venv venv
+
+# Activate it (Linux/Mac/WSL)
+source venv/bin/activate
+
+# Activate it (Windows)
+venv\Scripts\activate
+```
+
+### 3. Install Dependencies
+```bash
+pip install --upgrade pip
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+pip install transformer-lens sae-lens
+pip install transformers datasets einops
+pip install plotly jupyter ipywidgets
+pip install numpy pandas matplotlib
+```
+
+Or install from requirements file:
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Download Pre-trained SAEs (Optional but Recommended)
+Download SAEs via terminal to avoid Jupyter progress bar issues:
+```bash
+# Download Layer 6 SAE
+python3 -c "from sae_lens import SAE; SAE.from_pretrained('gpt2-small-res-jb', 'blocks.6.hook_resid_pre', 'cpu'); print('✅ Layer 6 downloaded')"
+
+# Download additional layers as needed (8, 10, 11)
+python3 -c "from sae_lens import SAE; SAE.from_pretrained('gpt2-small-res-jb', 'blocks.8.hook_resid_pre', 'cpu'); print('✅ Layer 8 downloaded')"
+python3 -c "from sae_lens import SAE; SAE.from_pretrained('gpt2-small-res-jb', 'blocks.10.hook_resid_pre', 'cpu'); print('✅ Layer 10 downloaded')"
+python3 -c "from sae_lens import SAE; SAE.from_pretrained('gpt2-small-res-jb', 'blocks.11.hook_resid_pre', 'cpu'); print('✅ Layer 11 downloaded')"
+```
+
+Move downloaded SAEs to a consistent cache location:
+```bash
+# Create cache directory if needed
+mkdir -p ~/.cache/sae_lens
+
+# Copy SAEs (use -rL to dereference symlinks)
+cp -rL ~/.cache/huggingface/hub/models--jbloom--GPT2-Small-SAEs-Reformatted/snapshots/*/blocks.*.hook_resid_pre ~/.cache/sae_lens/
+```
+
+### 5. Launch Jupyter and Run Notebooks
+
+**Option A: Command Line**
+```bash
+jupyter notebook
+```
+Then navigate to `notebooks/` and open the desired notebook.
+
+**Option B: VSCode**
+1. Open the project folder in VSCode
+2. Open any `.ipynb` file in the `notebooks/` folder
+3. Select the `venv` Python interpreter (bottom right of VSCode)
+4. Run cells with Shift+Enter
+
+### 6. Run Notebooks in Order
+
+The notebooks are designed to be run sequentially:
+
+| Notebook | Description |
+|----------|-------------|
+| `notebooks/phase_1.ipynb` | Initial setup, model loading, basic SAE exploration |
+| `notebooks/phase_2_feature_exploration.ipynb` | Feature analysis, heatmaps, specialist search |
+| `notebooks/phase_3_SAE_comparison.ipynb` | Multi-SAE comparison across layers |
+
+### Troubleshooting
+
+**Model/SAE download stalls in Jupyter:**
+- Use terminal downloads as shown in Step 4 above
+- Then use `SAE.load_from_disk(path)` in notebooks
+
+**Import errors:**
+- Verify virtual environment is activated: `which python` should show `venv/bin/python`
+- Reinstall dependencies: `pip install -r requirements.txt`
+
+**SAE loading hangs:**
+- Check if files exist: `ls ~/.cache/sae_lens/`
+- Ensure files are actual files, not broken symlinks: `ls -la ~/.cache/sae_lens/blocks.6.hook_resid_pre/`
+
+---
+
 ## Current Status
 
 ✅ **Phase 1: Initial Setup & Exploration** - COMPLETED (2025-10-23)
