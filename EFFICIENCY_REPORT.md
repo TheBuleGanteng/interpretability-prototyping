@@ -50,12 +50,13 @@ for text in concept_texts:
 **Solution:** Batch all texts together and process them in a single forward pass:
 ```python
 tokens = model.to_tokens(texts, prepend_bos=True)
+seq_lens = (tokens != model.tokenizer.pad_token_id).sum(dim=1)  # Get length of each sequence (excluding padding)
 with torch.no_grad():
     _, cache = model.run_with_cache(tokens, names_filter=[hook_name])
-activations = cache[hook_name][:, -1, :]  # Get last token for all texts at once
+activations = torch.stack([
+    cache[hook_name][i, seq_lens[i]-1, :] for i in range(tokens.shape[0])
+])  # Get actual last token for each text
 features = sae.encode(activations)
-```
-
 **Estimated Impact:** 5-10x speedup for feature extraction operations.
 
 ---
