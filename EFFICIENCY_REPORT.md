@@ -17,7 +17,7 @@ This report documents efficiency improvements identified in the interpretability
 
 **Affected Code:**
 
-In `phase_1_setup_intro.py` (lines 162-179):
+In `phase_1_setup_intro.ipynb` (approximate lines 162-179):
 ```python
 for text in texts:
     logits, cache = model.run_with_cache(text)
@@ -25,7 +25,7 @@ for text in texts:
     # ... process one text at a time
 ```
 
-In `phase_2_feature_exploration.py` (lines 162-178, 337-343):
+In `phase_2_feature_exploration.ipynb` (approximate lines 162-178, 337-343):
 ```python
 for text in texts:
     logits, cache = model.run_with_cache(text)
@@ -33,14 +33,14 @@ for text in texts:
     # ... process one text at a time
 ```
 
-In `phase_2_feature_exploration.py` - `explore_feature()` function (lines 738-748):
+In `phase_2_feature_exploration.ipynb` - `explore_feature()` function (approximate lines 738-748):
 ```python
 for text in texts_to_test:
     logits, cache = model.run_with_cache(text)
     # ... process one text at a time
 ```
 
-In `phase_2_feature_exploration.py` - `find_features_for_concept()` function (lines 831-845):
+In `phase_2_feature_exploration.ipynb` - `find_features_for_concept()` function (approximate lines 831-845):
 ```python
 for text in concept_texts:
     logits, cache = model.run_with_cache(text)
@@ -63,7 +63,7 @@ features = sae.encode(activations)
 
 ### 2. Redundant Feature Extraction in display_comparison_table (High Impact)
 
-**Location:** `phase_3_SAE_comparison.py`, lines 762-852
+**Location:** `phase_3_SAE_comparison.ipynb`, approximate lines 762-852
 
 **Problem:** The `display_comparison_table()` function re-extracts features for each SAE three separate times (once for strongest features, once for frequent features, once for selective features). This triples the computation time unnecessarily.
 
@@ -97,7 +97,7 @@ for sae_name in sae_names:
 
 ### 3. Inefficient Category Index Lookup (Medium Impact)
 
-**Location:** `phase_3_SAE_comparison.py`, `analyze_specialists()` function (lines 490-493)
+**Location:** `phase_3_SAE_comparison.ipynb`, `analyze_specialists()` function (approximate lines 490-493)
 
 **Problem:** For each category, the function iterates through all texts to find which indices belong to that category using a string comparison:
 ```python
@@ -119,11 +119,11 @@ text_to_idx = {text: i for i, text in enumerate(texts)}
 
 ### 4. Duplicate Function Definitions (Low Impact, Code Quality)
 
-**Location:** `phase_3_SAE_comparison.py`
+**Location:** `phase_3_SAE_comparison.ipynb`
 
 **Problem:** The `neuronpedia_link()` function is defined twice:
-- Lines 559-560 (module level)
-- Lines 681-682 (inside `display_comparison_table()`)
+- Approximate lines 559-560 (module level)
+- Approximate lines 681-682 (inside `display_comparison_table()`)
 
 **Solution:** Remove the duplicate definition inside `display_comparison_table()` and use the module-level function.
 
@@ -131,7 +131,7 @@ text_to_idx = {text: i for i, text in enumerate(texts)}
 
 ### 5. Inefficient Cache Checking with os.walk (Low Impact)
 
-**Location:** `phase_3_SAE_comparison.py`, `check_sae_cached()` function (lines 122-135)
+**Location:** `phase_3_SAE_comparison.ipynb`, `check_sae_cached()` function (approximate lines 122-135)
 
 **Problem:** Uses `os.walk()` to traverse the entire HuggingFace cache directory, which can be slow if the cache is large.
 
@@ -156,7 +156,7 @@ def check_sae_cached(sae_path):
 
 **Problem:** Some tensor operations that don't require gradients are not wrapped in `torch.no_grad()`, which wastes memory tracking gradients.
 
-**Example in phase_1 (lines 162-179):**
+**Example in `phase_1_setup_intro.ipynb` (approximate lines 162-179):**
 ```python
 for text in texts:
     logits, cache = model.run_with_cache(text)  # Should be in no_grad context
@@ -187,4 +187,4 @@ with torch.no_grad():
 
 ## Implementation Plan
 
-This PR implements fix #1 (batch text processing) in `phase_2_feature_exploration.py` as it provides the highest impact improvement. The change converts the sequential text processing loop in the diverse dataset feature extraction to use batched processing.
+This PR implements fix #1 (batch text processing) in `phase_2_feature_exploration.ipynb` as it provides the highest impact improvement. The change converts the sequential text processing loop in the diverse dataset feature extraction to use batched processing.
