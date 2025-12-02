@@ -246,6 +246,7 @@ The notebooks are designed to be run sequentially:
 - [x] Analyze which SAE architectures/layers produce better specialists
 - [x] Document differences in feature interpretability across layers
 - [x] Generate heatmap visualizations comparing all SAEs (specialist scores, activation strengths, frequency, layer progression)
+- [x] Generate visualizations that show activation intensity of a given specialist feature when exposed to a block of sample text (akin to approach taken by Anthropic)
 
 **Duration:** ~6 hours
 
@@ -284,6 +285,77 @@ The notebooks are designed to be run sequentially:
 - **Heatmap 2:** Top 5 Strongest Feature Activations by SAE (grouped bar chart)
 - **Heatmap 3:** Most Frequent Feature Coverage by SAE (bar chart showing % decline)
 - **Heatmap 4:** Layer Progression Line Chart (specialists found vs layer depth)
+- **Token-Level Highlighting (Cell 13):** Anthropic-style per-token activation visualization showing:
+  - Individual token highlighting with opacity proportional to activation strength
+  - Hover tooltips displaying exact activation values per token
+  - Orange highlighting for target category texts, gray for non-target categories
+  - All 70 texts displayed per specialist feature, organized by category
+  - Clickable Neuronpedia links for each specialist feature
+  - Color-coded activation summaries: red bold (>5.0), orange (1.0-5.0), gray (<1.0)
+
+**Sample Outputs:**
+
+*Specialist Scores by Category and Layer:*
+
+![Specialist Scores Heatmap](assets/specialist_by_layer_1_example.png)
+
+This heatmap shows specialist scores (inside category activation − outside category activation) for each text category across SAE layers. Key observations:
+- **Math** (score 6-8): Strong specialists found in all layers
+- **Social** (score 0→8): No specialist at layer 6, strongest at layer 11
+- **Conversational** (score 0→2): Hardest category to specialize, only emerges in deep layers
+
+*Top 5 Strongest Feature Activations by SAE:*
+
+![Strongest Feature Activations](assets/specialist_by_layer_2_example.png)
+
+Peak activation magnitudes increase dramatically with layer depth (~50 at layer 6 → ~140 at layer 11), indicating features become more sharply tuned in later layers.
+
+*Most Frequent Feature Coverage by SAE:*
+
+![Most Frequent Feature Coverage](assets/specialist_by_layer_4_example.png)
+
+The most frequent feature's coverage **decreases** with layer depth (51% → 46% → 40% → 30%). This inverse relationship demonstrates that early layers develop general-purpose features (syntax, structure) while deeper layers develop specialized features (domain-specific patterns). Each bar shows a different feature ID, confirming these are distinct features at each layer.
+
+*Category Specialist Discovery by Layer Depth:*
+
+![Specialist Discovery by Layer](assets/specialist_by_layer_3_example.png)
+
+Specialist count increases monotonically with depth: 5/7 (layer 6) → 6/7 (layer 8) → 7/7 (layers 10-11). The green dashed line marks the target of finding specialists for all 7 categories, achieved only in the deepest layers.
+
+| Category | Layer 6 | Layer 8 | Layer 10 | Layer 11 |
+|----------|---------|---------|----------|----------|
+| Python | 1 | 1 | 6 | 6 |
+| URLs | 3 | 4 | 3 | 5 |
+| Math | 6 | 8 | 7 | 7 |
+| Non-English | 8 | 7 | 4 | 4 |
+| Social | 0 | 1 | 5 | 8 |
+| Formal | 2 | 4 | 3 | 4 |
+| Conversational | 0 | 0 | 1 | 2 |
+
+*Token-Level Highlighting Example (Conversational Specialist - Feature #8955):*
+
+![Token-Level Highlighting](assets/highlighting_example.png)
+
+The visualization shows per-token activation intensity with orange highlighting. Key patterns visible:
+- **"I'm"** [21.24]: Strong activation on first-person contractions
+- **"I need to finish"** [20.51]: Fires on personal intent expressions  
+- **"I think"** [9.08]: Activates on opinion markers
+- **Zero activation** on factual statements ("The traffic was terrible", "That restaurant has the best pizza")
+
+This reveals the Conversational specialist detects **first-person expressions and personal statements**, not just "casual tone."
+
+*Cross-Domain Validation (Math Specialist on arithmetic operators):*
+
+```
+Math text: f(x) = x^2 + 2x + 1
+           Activations by token:
+           f(x)  =    x   ^2   +    2   x    +    1
+           [0.0] [25.4] [0.7] [34.4] [49.4] [4.9] [10.2] [45.1] [0.0]
+                  ^^^^         ^^^^   ^^^^         ^^^^
+                  Arithmetic operators show strongest activation
+```
+
+The Math specialist fires heavily on `+` (49.4), `^` (34.4), and `=` (25.4) - revealing it detects **arithmetic operators**, not "math topics."
 
 **CRITICAL METHODOLOGICAL DISCOVERY - Padding Masking:**
 
@@ -367,6 +439,14 @@ activations = sum_activations / num_real_tokens  # Average only real tokens
 - The issue was methodological (padding noise), not architectural
 - Residual streams at deeper layers show excellent specialization
 
+**8. Specialist Features Detect Syntax, Not Topics (Token-Level Insight):**
+- Token-level highlighting reveals that "specialist" features aren't detecting *topics* (math vs. code vs. chat)
+- They're detecting **specific syntactic/symbolic patterns** that correlate with those topics
+- **Math specialist** (Feature #22917): Actually an "arithmetic operator feature" - fires on `+`, `=`, `^`, `/` tokens regardless of context
+- **Python specialist** (Feature #15983): Actually a "function definition syntax feature" - fires on `):`, closing parentheses, `return` statements
+- **Cross-domain activation is expected:** Math specialist fires on Python code containing arithmetic operators; Python specialist fires on math expressions with parentheses
+- **Implication:** SAEs trained on reconstruction loss learn efficient patterns (shared low-level structures) rather than high-level semantic categories
+
 **Technical Improvements:**
 - ✅ **Padding masking:** Critical fix that revealed true specialist patterns
 - ✅ Modular analysis functions allowing easy testing of new SAEs
@@ -375,6 +455,15 @@ activations = sum_activations / num_real_tokens  # Average only real tokens
 - ✅ DataFrame deep-dives for investigation of individual feature behavior
 - ✅ **Plotly heatmaps:** Interactive visualizations showing specialist scores, activation strengths, frequency trends, and layer progression
 - ✅ **Summary statistics:** Automated categorization of "always specialist," "sometimes specialist," and "never specialist" categories
+- ✅ **Token-level highlighting:** Anthropic-style per-token activation visualization
+
+**Generating Additional Visualizations:**
+
+To export more Plotly charts as static images:
+```python
+# Requires: pip install kaleido
+fig.write_image("assets/your_chart.png", scale=2)
+```
 
 **Methodological Lessons:**
 1. **Preprocessing matters enormously:** Padding inclusion masked specialists completely
