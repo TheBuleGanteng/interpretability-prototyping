@@ -977,10 +977,10 @@ Each token processed without looking at other tokens!
 **How to test:**
 ```python
 # Load MLP-output SAE
-sae_mlp = SAE.from_pretrained('gpt2-small', 'blocks.10.hook_mlp_out', 'cpu')
+sae_mlp = SAE.from_pretrained('gpt2-small-mlp-jb', 'blocks.10.hook_mlp_out', 'cpu')
 
 # Load attention-output SAE  
-sae_attn = SAE.from_pretrained('gpt2-small', 'blocks.10.attn.hook_result', 'cpu')
+sae_attn = SAE.from_pretrained('gpt2-small-attn-jb', 'blocks.10.attn.hook_result', 'cpu')
 
 # Run Phase 3 analysis on each
 # Compare specialist counts and scores
