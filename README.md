@@ -126,7 +126,7 @@ The notebooks are designed to be run sequentially:
 
 ✅ **Phase 1: Initial Setup & Exploration** - COMPLETED (2025-10-23)
 ✅ **Phase 2: Feature Exploration & Analysis** - COMPLETED (2025-11-05)
-🔄 **Phase 3: SAE Comparison & Advanced Analysis** - IN PROGRESS (2025-11-10)
+✅ **Phase 3: SAE Comparison & Advanced Analysis** - COMPLETED (2025-12-02)
 
 ---
 
@@ -231,7 +231,7 @@ The notebooks are designed to be run sequentially:
 
 ---
 
-### Phase 3: SAE Comparison & Advanced Analysis 🔄 IN PROGRESS
+### Phase 3: SAE Comparison & Advanced Analysis ✅ COMPLETED
 **Goal:** Compare multiple pre-trained SAEs and understand how training affects feature specialization
 
 **Tasks:**
@@ -240,23 +240,26 @@ The notebooks are designed to be run sequentially:
 - [x] Build comprehensive comparison framework with helper functions
 - [x] Create HTML comparison table showing all SAE results side-by-side
 - [x] Generate detailed per-SAE text output with Neuronpedia links
-- [x] Create DataFrame visualizations showing top 3 strongest features per SAE
-- [ ] Generate heatmap visualizations for each SAE (similar to Phase 2)
-- [ ] Compare specialist features across SAEs
-- [ ] Analyze which SAE architectures/layers produce better specialists
-- [ ] Document differences in feature interpretability across layers
+- [x] Create DataFrame visualizations showing top 5 strongest features per SAE
+- [x] Implement proper padding masking in feature extraction
+- [x] Compare specialist features across SAEs
+- [x] Analyze which SAE architectures/layers produce better specialists
+- [x] Document differences in feature interpretability across layers
+- [x] Generate heatmap visualizations comparing all SAEs (specialist scores, activation strengths, frequency, layer progression)
 
-**Key Questions:**
-- Do deeper layers (8, 10, 11) learn more specialized features than layer 6?
-- Do different layers show qualitatively different feature types?
-- Why do all tested residual stream SAEs show 0 specialists?
-- Would MLP-output or attention-output SAEs show more specialization?
+**Duration:** ~6 hours
 
-**Progress So Far:**
+**Key Questions Answered:**
+- ✅ **Do deeper layers learn more specialized features?** YES - Layers 10 and 11 achieved 7/7 specialists
+- ✅ **Do different layers show qualitatively different feature types?** YES - Clear progression from general to specialized
+- ✅ **Can residual stream SAEs learn specialists?** YES - when proper methodology is used
+- ✅ **How does feature generality change with depth?** Most frequent feature coverage DECREASES (51% → 30%) as layers deepen, indicating shift from general to specialized representations
+- ✅ **Which categories are hardest to specialize?** Social and Conversational - only found in layers 10-11, while Math/Python/URLs found in all layers
+- ❓ **Would MLP-output or attention-output SAEs show more specialization?** Not tested - these SAEs are not available for this model release
 
 **SAE Comparison Framework:**
 - Implemented modular helper functions: `analyze_strongest()`, `analyze_frequent()`, `analyze_selective()`, `analyze_specialists()`
-- Created `extract_features()` function for consistent feature extraction across SAEs
+- Created `extract_features()` function with proper padding masking for consistent feature extraction across SAEs
 - Built `display_comparison_table()` with HTML rendering for clear cross-SAE comparison
 - Added `neuronpedia_link()` helper for consistent link generation
 
@@ -275,26 +278,117 @@ The notebooks are designed to be run sequentially:
 **Visualization Outputs:**
 - HTML comparison table with clickable Neuronpedia links
 - Per-SAE detailed text output with statistics
-- DataFrame showing top 10 activating texts for top 3 strongest features per SAE
-- Summary table showing specialist counts (0/7 for all SAEs tested)
+- DataFrame showing top 10 activating texts for top 5 strongest features per SAE
+- Summary table showing specialist progression across layers
+- **Heatmap 1:** Specialist Scores Matrix (Category × SAE) with color-coded scores
+- **Heatmap 2:** Top 5 Strongest Feature Activations by SAE (grouped bar chart)
+- **Heatmap 3:** Most Frequent Feature Coverage by SAE (bar chart showing % decline)
+- **Heatmap 4:** Layer Progression Line Chart (specialists found vs layer depth)
+
+**CRITICAL METHODOLOGICAL DISCOVERY - Padding Masking:**
+
+**Initial Results (WITHOUT proper padding masking):**
+```
+6-res-jb:  0/7 specialists found ❌
+8-res-jb:  1/7 specialists found
+10-res-jb: 1/7 specialists found
+11-res-jb: 1/7 specialists found
+```
+
+**The Problem:**
+The original `extract_features()` function included padding tokens in the average:
+```python
+# OLD (INCORRECT):
+activations = activations.mean(dim=1)  # Includes padding!
+```
+
+This systematically diluted category-specific signals, adding uniform noise that masked specialist features.
+
+**The Solution:**
+Implemented proper attention masking to exclude padding tokens:
+```python
+# NEW (CORRECT):
+attention_mask = (tokens != model.tokenizer.pad_token_id).float()
+attention_mask = attention_mask.unsqueeze(-1)
+masked_activations = activations * attention_mask
+sum_activations = masked_activations.sum(dim=1)
+num_real_tokens = attention_mask.sum(dim=1)
+activations = sum_activations / num_real_tokens  # Average only real tokens
+```
+
+**Final Results (WITH proper padding masking):**
+```
+6-res-jb:  5/7 specialists found ✅ (Python, URLs, Math, Non-English, Formal)
+8-res-jb:  6/7 specialists found ✅ (all except Conversational)
+10-res-jb: 7/7 specialists found ✅✅ (EVERY category!)
+11-res-jb: 7/7 specialists found ✅✅ (EVERY category!)
+```
 
 **Key Findings:**
-- **No specialists found:** All 4 residual stream SAEs (layers 6, 8, 10, 11) showed 0/7 category specialists with positive scores
-- **General features dominate:** These SAEs appear to learn general-purpose features that work across text types
-- **Layer depth doesn't guarantee specialization:** Deeper layers (10, 11) didn't show more specialists than earlier layers (6, 8)
-- **Residual stream hypothesis:** Because residual streams contain accumulated information from all previous layers, they may inherently favor general features over specialists
+
+**1. Layer Depth and Specialization:**
+- **Layer 6:** 5/7 specialists - moderate specialization
+- **Layer 8:** 6/7 specialists - improved specialization
+- **Layers 10 & 11:** 7/7 specialists - **complete specialization across all categories**
+- **Conclusion:** Deeper layers DO learn more specialized features
+
+**2. Inverse Frequency-Depth Relationship (Heatmap Insight):**
+- Most frequent feature coverage DECREASES with layer depth:
+  - Layer 6: 51.4% of texts
+  - Layer 8: 45.7% of texts
+  - Layer 10: 40.0% of texts
+  - Layer 11: 30.0% of texts
+- **Interpretation:** Early layers develop general features (syntax, structure); deeper layers develop specialized features (semantics, domain-specific patterns)
+
+**3. Category-Specific Discoveries:**
+- **Math specialists:** Found in all 4 layers, peaks at layer 8 (score: 8), stabilizes at 7
+- **Python specialists:** Weak at layers 6-8 (score: 1), emerges strongly at layers 10-11 (score: 6)
+- **Social specialists:** Absent at layer 6, weak at layer 8 (score: 1), **strongest at layer 11 (score: 8)**
+- **Conversational specialists:** Only in layers 10-11, remains weakest category (scores: 1-2)
+- **Pattern:** Surface-level patterns (math symbols) specialize early; contextual patterns (social tone) require deep processing
+
+**4. Category Consistency Across SAEs (Heatmap Insight):**
+- **Always specialists (5 categories):** Python, URLs, Math, Non-English, Formal - found in ALL layers
+- **Sometimes specialists (2 categories):** Social (3/4 SAEs), Conversational (2/4 SAEs)
+- **Never missing:** No category completely lacks specialists at all layers
+
+**5. Best Specialist Category per Layer (Heatmap Insight):**
+- Layer 6: Math (score: 6)
+- Layer 8: Math (score: 8)
+- Layer 10: Math (score: 7)
+- Layer 11: **Social (score: 8)** ← Category leadership shifts at final layer
+
+**6. Activation Magnitude Increases with Depth:**
+- Peak activations grow substantially: ~13 (layer 6) → ~37 (layer 11)
+- Suggests features become more sharply tuned in later layers
+
+**7. Residual Stream SAEs CAN Learn Specialists:**
+- Previous hypothesis that residual streams inherently favor general features was **INCORRECT**
+- The issue was methodological (padding noise), not architectural
+- Residual streams at deeper layers show excellent specialization
 
 **Technical Improvements:**
-- Modular analysis functions allow easy testing of new SAEs
-- Consistent feature extraction across different hook points
-- HTML tables provide clear side-by-side comparison
-- DataFrame deep-dives allow investigation of individual feature behavior
+- ✅ **Padding masking:** Critical fix that revealed true specialist patterns
+- ✅ Modular analysis functions allowing easy testing of new SAEs
+- ✅ Consistent feature extraction across different hook points
+- ✅ HTML tables providing clear side-by-side comparison
+- ✅ DataFrame deep-dives for investigation of individual feature behavior
+- ✅ **Plotly heatmaps:** Interactive visualizations showing specialist scores, activation strengths, frequency trends, and layer progression
+- ✅ **Summary statistics:** Automated categorization of "always specialist," "sometimes specialist," and "never specialist" categories
 
-**Next Steps:**
-- Generate heatmaps for each SAE to visualize activation patterns
-- Test MLP-output and attention-output SAEs (not just residual stream)
-- Lower specialist threshold or try alternative specialist metrics
-- Investigate qualitative differences between layer features even without specialists
+**Methodological Lessons:**
+1. **Preprocessing matters enormously:** Padding inclusion masked specialists completely
+2. **Don't blame the model first:** Methodological issues can mimic architectural limitations
+3. **Test incrementally:** Comparing with/without padding revealed the problem
+4. **Deeper investigation pays off:** Initial null results led to discovering critical bug
+
+**Impact on Interpretability Research:**
+- Demonstrates importance of proper token masking in activation averaging
+- Shows residual streams ARE viable for finding specialists
+- Confirms layer depth hypothesis for feature specialization
+- Provides methodology for future SAE comparison studies
+- **Reveals inverse relationship between feature generality and layer depth** - quantified via frequency heatmaps
+- **Identifies category-specific processing depths** - some patterns (math) detected early, others (social) require deep processing
 
 ---
 
@@ -678,6 +772,10 @@ jupyter notebook
 
 **Specialist Score**: (strong activations inside category) - (strong activations outside category). Positive scores indicate true specialists.
 
+**Padding**: Dummy tokens added to sequences to make them uniform length for batch processing. Padding tokens should be masked out during analysis to avoid diluting real signals.
+
+**Attention Mask**: A binary tensor (1s for real tokens, 0s for padding) used to exclude padding tokens from computations like averaging. Critical for accurate activation analysis.
+
 **Gradient**: The derivative of loss with respect to a parameter (weight), indicating how much the loss changes when that parameter changes. Gradients point in the direction of steepest increase in loss; training moves in the opposite direction to minimize loss.
 
 **Residual Connection**: A skip connection that adds the input of a layer to its output (x_new = x_old + f(x_old)), preserving information flow and enabling training of deep networks.
@@ -686,61 +784,293 @@ jupyter notebook
 
 ---
 
-## Learning Resources
+## Understanding Transformer Information Streams
 
-### Papers & Articles
-- [Scaling Monosemanticity (Anthropic, 2024)](https://transformer-circuits.pub/2024/scaling-monosemanticity/index.html) - Main inspiration
-- [Towards Monosemanticity (Anthropic, 2023)](https://transformer-circuits.pub/2023/monosemantic-features/index.html) - Original SAE paper
-- [Toy Models of Superposition (Anthropic, 2022)](https://transformer-circuits.pub/2022/toy_model/index.html) - Why superposition happens
+Transformers process information through three distinct streams at each layer. Understanding these is critical for interpreting SAE results and choosing where to apply them.
 
-### Tools & Libraries
-- [TransformerLens Documentation](https://transformerlensorg.github.io/TransformerLens/)
-- [SAELens GitHub](https://github.com/jbloomAus/SAELens)
-- [Neuronpedia](https://neuronpedia.org/) - Explore pre-computed SAE features
+### The Three Information Streams
 
-### Related Projects
-- [Mechanistic Interpretability Quickstart](https://arena3-chapter1-transformer-interp.streamlit.app/)
-- [Neel Nanda's MI Resources](https://www.neelnanda.io/mechanistic-interpretability/getting-started)
+#### **1. Residual Stream** (Hook: `blocks.X.hook_resid_pre`)
+
+**What it contains:**
+```
+Residual Stream at Layer X =
+  Token Embeddings (initial representations)
+  + Attention Outputs from Layers 0 to X-1
+  + MLP Outputs from Layers 0 to X-1
+```
+
+**Characteristics:**
+- The "main information highway" through the network
+- Accumulates ALL information from previous layers
+- Each layer reads from it and writes back to it via addition
+- Contains both relationships (from attention) and transformations (from MLPs)
+
+**Analogy:** Like a river that grows as tributaries (attention and MLP outputs) flow into it
+
+**Phase 3 Results:** Tested this stream at layers 6, 8, 10, 11
+- Found 5-7 specialists per layer
+- Deeper layers showed better specialization (7/7 at layers 10-11)
+
+**Why use this stream:**
+- Most comprehensive view of model's knowledge at that point
+- Contains full context from all previous processing
+- Good for finding features that integrate multiple types of information
+
+---
+
+#### **2. Attention Output** (Hook: `blocks.X.attn.hook_result`): "Which tokens should talk to each other?"
+
+**What it contains:**
+- ONLY the output from the attention mechanism at layer X
+- Information about relationships BETWEEN tokens
+- Which tokens attended to which other tokens
+
+**What attention does:**
+```
+Input:  ["She", "is", "a", "programmer"]
+
+Attention computes (many-to-many relationships):
+- "She" ← attends to → "programmer" (pronoun resolution)
+- "is"  ← attends to → "She" and "programmer" (subject-verb-object)
+- Each token can look at and gather info from other tokens
+```
+
+**Characteristics:**
+- Handles token-to-token relationships
+- Routing mechanism: decides which information flows where
+- Context-dependent: same token processed differently based on surroundings
+
+**Examples of what attention might specialize in:**
+- Pronoun resolution (linking "she" to "programmer")
+- Bracket matching (pairing opening/closing brackets)
+- Quote pairing (matching opening/closing quotes)
+- Subject-verb agreement patterns
+- Function call syntax structure
+
+**Phase 3 Status:** NOT tested yet ❌
+
+**Why test this stream:**
+- Might find specialists for structural/relational patterns
+- Different from content-based specialists
+- Pure relationship detection without content transformation
+
+---
+
+#### **3. MLP Output** (Hook: `blocks.X.hook_mlp_out`): "What does each individual token mean?" (No arrows between tokens - no relationships)
+
+**What it contains:**
+- ONLY the output from the MLP (feedforward network) at layer X
+- Individual transformations applied to EACH token separately
+- NO relationships between tokens (each processed independently)
+
+**What MLP does:**
+```
+Input:  ["She", "is", "a", "programmer"]
+
+MLP processes EACH token independently (no relationships):
+- "She"        → [pronoun, female, subject]
+- "is"         → [verb, linking, present-tense]
+- "a"          → [article, indefinite]
+- "programmer" → [occupation, technical, human, coding-related]
+
+Each token processed without looking at other tokens!
+```
+
+**Characteristics:**
+- Processes tokens in isolation (no token-to-token communication)
+- Non-linear transformations: Input → ReLU(Linear1) → Linear2 → Output
+- Feature computation and memorization
+- Can detect domain-specific patterns in individual tokens
+
+**Examples of what MLP might specialize in:**
+- Detecting "math symbol in this token"
+- Recognizing "Python keyword in this token"
+- Identifying "emoji character"
+- Language detection for individual words
+- Domain-specific token classification
+
+**Phase 3 Status:** NOT tested yet ❌
+
+**Why test this stream:**
+- Might find STRONGER domain specialists
+- Not diluted by accumulated context from residual stream
+- Pure content detection without relationships
+- Hypothesis: Could show higher specialist scores than residual stream
+
+---
+
+### Visual Comparison
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Residual Stream (Tested ✓)                                  │
+│ = Embeddings + All Attention + All MLP from layers 0 to X-1 │
+│                                                              │
+│ Contains: Everything mixed together                         │
+│ Specialists Found: 5-7 per layer (7/7 at layers 10-11)     │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ Attention Output (Not Tested ❌)                            │
+│ = JUST attention from layer X                               │
+│                                                              │
+│ Token1 ←→ Token2    (many-to-many relationships)           │
+│   ↓  x    ↓                                                 │
+│ Token3 ←→ Token4                                            │
+│                                                              │
+│ Might show: Structural/relational specialists               │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ MLP Output (Not Tested ❌)                                  │
+│ = JUST MLP from layer X                                     │
+│                                                              │
+│ Token1 → [features]    (independent transformations)        │
+│ Token2 → [features]                                         │
+│ Token3 → [features]                                         │
+│ Token4 → [features]                                         │
+│                                                              │
+│ Might show: STRONGER content-based specialists              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Key Distinctions
+
+| Aspect | Residual Stream | Attention Output | MLP Output |
+|--------|----------------|------------------|------------|
+| **Scope** | Accumulated everything | Relationships only | Transformations only |
+| **Information** | Mixed context | Token-to-token | Single token |
+| **Operation** | Addition over time | Many-to-many routing | Independent processing |
+| **Tested in Phase 3** | ✅ Yes | ❌ No | ❌ No |
+| **Expected Specialists** | General + domain | Structural patterns | Domain-specific content |
+
+---
+
+### Why Understanding This Matters
+
+1. **Interpretation depends on stream:**
+   - Residual stream feature = "What has the model learned by this point?"
+   - Attention feature = "What relationships is the model detecting?"
+   - MLP feature = "What individual token properties is the model computing?"
+
+2. **Different streams may show different specialists:**
+   - Residual: Mixed specialists (tested, found 7/7 at deep layers)
+   - Attention: Structural specialists (untested hypothesis)
+   - MLP: Stronger domain specialists (untested hypothesis)
+
+3. **Choosing the right stream for analysis:**
+   - Want full context? → Residual stream
+   - Want relationship patterns? → Attention output
+   - Want pure content detection? → MLP output
+
+---
+
+### Future Work: Testing Non-Residual Streams
+
+**Hypothesis to test:**
+- MLP-output SAEs might show **stronger** specialists (higher scores)
+- Attention-output SAEs might show **different** specialists (structural vs. content)
+
+**How to test:**
+```python
+# Load MLP-output SAE
+sae_mlp = SAE.from_pretrained('gpt2-small-mlp-jb', 'blocks.10.hook_mlp_out', 'cpu')
+
+# Load attention-output SAE  
+sae_attn = SAE.from_pretrained('gpt2-small-attn-jb', 'blocks.10.attn.hook_result', 'cpu')
+
+# Run Phase 3 analysis on each
+# Compare specialist counts and scores
+```
+
+**Expected insights:**
+- Whether domain specialists are learned primarily in MLPs
+- Whether structural specialists are learned primarily in attention
+- Optimal hook points for different interpretability goals
 
 ---
 
 ## Progress Log
 
-### [2025-11-10] - Phase 3 Started 🔄
+### [2025-12-02] - Phase 3 Completion ✅
+**Duration**: ~6 hours
 
-**SAE Loading:**
-- Downloaded and configured 4 SAEs from different layers (6, 8, 10, 11)
-- All from residual stream hook points (`blocks.X.hook_resid_pre`)
-- Successfully loaded and tested each SAE with 70-text diverse dataset
+**Critical Discovery - Padding Masking Bug:**
+- **Initial Results:** 0-1 specialists per SAE across all layers
+- **Root Cause:** `extract_features()` was including padding tokens in activation averaging
+- **Impact:** Padding noise systematically diluted category-specific signals
+- **Solution:** Implemented proper attention masking to exclude padding tokens
+- **Outcome:** Revealed 5-7 specialists per SAE, with layers 10-11 achieving 7/7
 
-**Analysis Framework:**
-- Built modular helper functions for consistent analysis across SAEs
-- `analyze_strongest()` - finds features with highest max activation
-- `analyze_frequent()` - finds features active in most texts
-- `analyze_selective()` - finds features with high activation but rare occurrence
-- `analyze_specialists()` - searches for category-specific features
-- `extract_features()` - consistent feature extraction across different hook points
+**Methodological Fix:**
+```python
+# OLD (INCORRECT) - included padding in average:
+activations = activations.mean(dim=1)
 
-**Visualization System:**
-- Created HTML comparison table with side-by-side SAE results
-- Implemented detailed per-SAE text output with statistics
-- Built DataFrame views showing top 10 activating texts for strongest features
-- Integrated Neuronpedia links throughout all outputs
+# NEW (CORRECT) - masks padding before averaging:
+attention_mask = (tokens != model.tokenizer.pad_token_id).float()
+masked_activations = activations * attention_mask.unsqueeze(-1)
+activations = masked_activations.sum(dim=1) / attention_mask.sum(dim=1).unsqueeze(-1)
+```
 
-**Key Finding - No Specialists:**
-- All 4 residual stream SAEs showed 0/7 category specialists (score > 0)
-- Tested across 7 categories: Python, URLs, Math, Non-English, Social, Formal, Conversational
-- Suggests residual stream SAEs favor general-purpose features over domain specialists
-- Hypothesis: Accumulated information in residual stream makes specialization difficult
+**SAE Specialist Results (After Fix):**
+- **Layer 6:** 5/7 specialists (Python, URLs, Math, Non-English, Formal)
+- **Layer 8:** 6/7 specialists (all except Conversational)
+- **Layer 10:** 7/7 specialists (COMPLETE coverage)
+- **Layer 11:** 7/7 specialists (COMPLETE coverage)
+
+**Analysis Framework Built:**
+- Modular helper functions: `analyze_strongest()`, `analyze_frequent()`, `analyze_selective()`, `analyze_specialists()`
+- Fixed `extract_features()` with proper padding masking
+- HTML comparison tables with Neuronpedia links
+- DataFrame visualizations for top 5 strongest features per SAE
+- Comprehensive cross-SAE comparison infrastructure
+
+**Key Findings:**
+
+**1. Layer Depth and Specialization:**
+Clear progression from shallow to deep layers:
+- Early layers (6): Moderate specialization (5/7 categories)
+- Middle layers (8): Improved specialization (6/7 categories)
+- Deep layers (10-11): Complete specialization (7/7 categories)
+
+**2. Category Difficulty Hierarchy:**
+- **Easy to specialize** (found in layer 6): Math, Non-English, URLs, Python, Formal
+- **Hard to specialize** (only layers 10-11): Social, Conversational
+- Suggests social/contextual patterns require deeper processing
+
+**3. Specialist Score Evolution:**
+Example - Math category specialist scores:
+- Layer 6: +6
+- Layer 8: +8
+- Layer 10: +7
+- Layer 11: +7
+Math specialists strengthen and stabilize in deeper layers
+
+**4. Residual Streams CAN Learn Specialists:**
+- Previous hypothesis that residual streams favor general features was **INCORRECT**
+- The issue was methodological (padding noise), not architectural
+- Deep residual stream SAEs show excellent domain specialization
+
+**5. Architecture Validation:**
+Successfully tested 4 SAEs across different layers:
+- `blocks.6.hook_resid_pre` (Layer 6 Residual Stream)
+- `blocks.8.hook_resid_pre` (Layer 8 Residual Stream)
+- `blocks.10.hook_resid_pre` (Layer 10 Residual Stream)
+- `blocks.11.hook_resid_pre` (Layer 11 Residual Stream)
 
 **Interpretability Insights:**
-- Layer depth alone doesn't guarantee more specialized features
-- Residual stream SAEs may be inherently biased toward general features
-- Specialist threshold (score > 0) may be too strict for these decompositions
-- Need to test alternative SAE types (MLP output, attention output) for comparison
+- **Preprocessing is critical:** Seemingly minor choices (padding handling) can completely mask results
+- **Don't blame architecture first:** Methodological issues can mimic architectural limitations
+- **Incremental testing reveals bugs:** Comparing with/without changes identified the problem
+- **Deeper layers = better specialists:** Confirmed hypothesis about layer specialization
 
 **Technical Achievements:**
 - Scalable framework for testing additional SAEs
+- Proper token masking implementation
 - Comprehensive comparison infrastructure
 - Clear visualization of cross-SAE differences
 - Reproducible analysis pipeline
@@ -750,12 +1080,21 @@ jupyter notebook
 - Learned distinction between residual stream, MLP output, and attention output
 - Understood role of random seeds in reproducibility vs. exploration
 - Explored local vs. global minima in neural network training
+- Discovered critical importance of attention masking in activation averaging
 
-**Next Tasks:**
-- Generate heatmap visualizations for each SAE
-- Test MLP-output and attention-output SAEs
-- Compare qualitative feature differences across layers
-- Investigate alternative specialist metrics
+**Lessons for Future Work:**
+1. Always mask padding tokens when averaging activations
+2. Test methodology incrementally (with/without changes)
+3. Question null results before accepting architectural explanations
+4. Deep layers (10-11) are ideal for finding category specialists
+5. Specialist detection requires clean, uncontaminated signals
+
+**Impact:**
+This phase demonstrated that:
+- Residual stream SAEs ARE viable for finding domain specialists
+- Layer depth strongly correlates with specialization ability
+- Methodological rigor is essential for interpretability research
+- Proper preprocessing can reveal patterns that appear absent with naive approaches
 
 ### [2025-11-05] - Phase 2 Completion ✅
 
@@ -868,6 +1207,26 @@ This is a personal learning project, but suggestions and improvements are welcom
 ## License
 
 MIT License - Feel free to use this code for your own learning and experimentation.
+
+---
+
+## Learning Resources
+
+### Papers & Articles
+- [Scaling Monosemanticity (Anthropic, 2024)](https://transformer-circuits.pub/2024/scaling-monosemanticity/index.html) - Main inspiration
+- [Towards Monosemanticity (Anthropic, 2023)](https://transformer-circuits.pub/2023/monosemantic-features/index.html) - Original SAE paper
+- [Toy Models of Superposition (Anthropic, 2022)](https://transformer-circuits.pub/2022/toy_model/index.html) - Why superposition happens
+
+### Tools & Libraries
+- [TransformerLens Documentation](https://transformerlensorg.github.io/TransformerLens/)
+- [SAELens GitHub](https://github.com/jbloomAus/SAELens)
+- [Neuronpedia](https://neuronpedia.org/) - Explore pre-computed SAE features
+
+---
+
+### Related Projects
+- [Mechanistic Interpretability Quickstart](https://arena3-chapter1-transformer-interp.streamlit.app/)
+- [Neel Nanda's MI Resources](https://www.neelnanda.io/mechanistic-interpretability/getting-started)
 
 ---
 
