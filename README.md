@@ -916,7 +916,7 @@ Each token processed without looking at other tokens!
 │ = JUST attention from layer X                               │
 │                                                              │
 │ Token1 ←→ Token2    (many-to-many relationships)           │
-│   ↓  ⤫    ↓                                                 │
+│   ↓  x    ↓                                                 │
 │ Token3 ←→ Token4                                            │
 │                                                              │
 │ Might show: Structural/relational specialists               │
