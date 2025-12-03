@@ -128,6 +128,27 @@ The notebooks are designed to be run sequentially:
 ✅ **Phase 2: Feature Exploration & Analysis** - COMPLETED (2025-11-05)
 ✅ **Phase 3: SAE Comparison & Advanced Analysis** - COMPLETED (2025-12-02)
 
+
+---
+
+## Project Structure
+
+```
+interpretability-prototyping/
+├── README.md                          # This file
+├── notebooks/
+│   ├── phase_1.ipynb                  # Phase 1 ✅ COMPLETE
+│   └── phase_2_feature_exploration.ipynb # Phase 2 ✅ COMPLETE
+├── src/                               # Future: Refactored code
+├── data/                              
+│   ├── phase1_activations.pt          # Cached activations from Phase 1
+│   └── .gitignore
+├── outputs/                           
+│   └── .gitignore
+├── requirements.txt                   # Python dependencies
+└── .gitignore
+```
+
 ---
 
 ## Roadmap
@@ -569,258 +590,6 @@ Custom SAE Training
 Trained SAE → Feature Analysis → Insights
 ```
 
----
-
-## Phase 2 Notebook Guide
-
-### Overview
-The Phase 2 notebook (`phase_2_feature_exploration.ipynb`) demonstrates systematic feature exploration and analysis across diverse text types to understand what patterns the SAE has learned.
-
-### Cell-by-Cell Breakdown
-
-#### **Cell 1: Introduction (Markdown)**
-- **Purpose**: Overview of Phase 2 objectives
-- **Key Points**: Systematic exploration, max-activating examples, visualization, interactive tools, co-activation patterns
-
-#### **Cell 2: Import Libraries**
-- **Purpose**: Import all required dependencies
-- **Libraries**: torch, numpy, pandas, plotly, transformer-lens, sae-lens
-- **Setup**: Random seeds for reproducibility
-- **Output**: Confirmation of successful imports and PyTorch version
-
-#### **Cell 3: Load LLM & SAE (with Multiple SAE Options)**
-- **Purpose**: Load GPT-2 model and select from multiple pre-trained SAEs
-- **Key Features**:
-  - Dictionary of available SAEs with metadata
-  - Easy SAE selection via variable
-  - Automatic hook point configuration
-  - Error handling for missing SAEs
-- **Available SAEs**:
-  - `6-res-jb`: Layer 6 Residual Stream (default)
-  - `8-res-jb`: Layer 8 Residual Stream
-  - `10-res-jb`: Layer 10 Residual Stream
-  - `6-mlp-out`: Layer 6 MLP Output
-- **Output**: Model loaded, SAE selection confirmed, dimensions displayed
-
-#### **Cell 4: Extract Features from Texts**
-- **Purpose**: Extract and display features from initial sample texts
-- **Process**:
-  - Run 4 sample texts through model
-  - Extract layer 6 activations
-  - Pass through SAE to get sparse features
-  - Display top 5 features for each text
-- **Output**: Feature activations for each text with indices and values
-- **Key Insight**: Same features (like #5527, #9815, #10399) appear across different texts
-
-#### **Cell 5: Find Most Frequently Active Features**
-- **Purpose**: Identify features that activate consistently across all texts
-- **Method**: Count how many texts activate each feature (activation > 0)
-- **Parameters**: Configurable `most_freq_features` variable (default 20)
-- **Output**: 
-  - Ranked list of most frequent features
-  - Activation counts and percentages
-  - Interpretation of universal vs specialized features
-- **Key Finding**: Top features often activate in 100% of texts (general-purpose)
-
-#### **Cell 6: Load Larger Diverse Dataset**
-- **Purpose**: Create comprehensive test dataset spanning multiple domains
-- **Dataset Size**: 70 texts across 7 categories (10 per category)
-- **Categories**:
-  - Python code (functions, imports, loops, classes)
-  - URLs/Web content (links, HTML, HTTP requests)
-  - Mathematical notation (equations, integrals, limits, formulas)
-  - Non-English languages (French, Chinese, Spanish, German, Russian, Japanese, Arabic, Korean, Italian, Portuguese)
-  - Social media/emoji (casual slang, emojis, internet speak)
-  - Formal/academic writing (research language, legal text)
-  - Conversational English (everyday phrases)
-- **Process**: Extract features for all 70 texts
-- **Output**: Feature tensor [70, 24576] with category labels
-
-#### **Cell 7: Discover and Analyze Most Interesting Features**
-- **Purpose**: Find and analyze features using multiple criteria
-- **Approach 1 - Strongest Feature**:
-  - Finds feature with highest single activation value
-  - Example: Feature #10399 (16.85)
-- **Approach 2 - Most Frequent Feature**:
-  - Finds feature active in most texts
-  - Example: Feature #174 (active in 69/70 texts)
-- **Approach 3 - Most Selective Feature**:
-  - Finds features with high activation (>5.0) in fewest texts
-  - Uses activation threshold to identify rare specialists
-- **Approach 4 - Category-Specific Analysis**:
-  - Searches for specialists in each of 7 categories
-  - Calculates specialist score: (strong activations inside category) - (strong activations outside)
-  - Example finding: Feature #18522 for Math (score: +6)
-  - Identifies true specialists vs general features
-- **Output**: 
-  - Detailed analysis of top 3 features with statistics
-  - Category breakdown with Neuronpedia links
-  - Specialist scores and interpretation
-  - Summary of findings (e.g., "1/7 categories have specialist features")
-- **Key Insight**: Most features are general-purpose; true specialists are rare
-
-#### **Cell 8: Feature Activation Heatmap**
-- **Purpose**: Visualize activation patterns across diverse texts
-- **Visualizations**:
-  1. **Heatmap**: Shows feature activations across all 70 texts
-     - Rows: Top 10 frequent features
-     - Columns: All 70 texts with category labels
-     - Color intensity: Activation strength
-  2. **Bar Chart**: Mean activation by category for each feature
-     - Groups bars by category
-     - Compares feature behavior across domains
-- **Output**: 
-  - Interactive Plotly visualizations
-  - Interpretation guide
-  - Dynamic messaging based on whether specialists were found
-- **Key Insight**: Visual confirmation of general vs specialized features
-
-#### **Cell 9: Build Interactive Feature Explorer Function**
-- **Purpose**: Create reusable tool for exploring individual features
-- **Function**: `explore_feature(feature_idx, num_examples=10)`
-- **Features**:
-  - Displays Neuronpedia link
-  - Shows top N activating texts
-  - Returns sorted list of (text, activation) pairs
-- **Example**: Explores Feature #10399 (strongest from Cell 7)
-- **Output**: 
-  - Ranked list of texts that activate the feature
-  - Activation values for each text
-  - Full dataset output for further analysis
-- **Usage**: Can be called on any feature index for investigation
-
-#### **Cell 10: Feature Co-Activation Analysis**
-- **Purpose**: Identify which features consistently activate together
-- **Method**: For each category, find features active in most texts within that category
-- **Output**: 
-  - Top 5 most common features per category with Neuronpedia links
-  - Activation frequencies within each category
-- **Key Finding**: Same general features (e.g., #18, #31, #36, #45) appear across all categories
-- **Interpretation**: Confirms lack of category-specific specialists in this SAE
-
-#### **Cell 11: Find Features for a Specific Concept (with Activation Strength)**
-- **Purpose**: Find features that characterize a specific concept (e.g., "Code/Programming")
-- **Method**: 
-  - Analyzes multiple example texts of the concept
-  - Counts strong activations (>5.0) per feature
-  - Calculates mean activation across all examples
-  - Ranks by composite score (frequency% × mean activation)
-- **Parameters**:
-  - `concept_texts`: List of example texts
-  - `top_k`: Number of features to return (default 5)
-  - `activation_threshold`: Minimum for "strong" activation (default 5.0)
-- **Example**: "Code/Programming" concept with 5 Python snippets
-- **Output**:
-  - Top features ranked by composite score
-  - Strong frequency (% of texts with activation >5.0)
-  - Mean activation across all texts
-  - Neuronpedia links
-- **Key Improvement**: Considers both frequency AND strength (not just binary presence)
-- **Results**: 
-  - Feature #18: 100% frequency, 9.92 mean, 992 composite score
-  - Feature #31: 100% frequency, 9.85 mean, 985 composite score
-  - Feature #36: 100% frequency, 4.97 mean, 497 composite score (notably weaker)
-
-### Key Findings from Phase 2
-
-**Specialist Features:**
-- Only 1 true specialist found: Feature #18522 for mathematical notation
-- Specialist score of +6 (activates strongly in Math but rarely elsewhere)
-- Most other features are general-purpose across all categories
-
-**General Features:**
-- Features #18, #31, #36, #45 activate across all text types
-- These represent fundamental linguistic patterns rather than domain-specific concepts
-- Activation strength varies but presence is consistent
-
-**Activation Patterns:**
-- Composite scoring (frequency × strength) reveals meaningful differences
-- Binary presence/absence masks important nuances
-- Some features activate everywhere but with different intensities
-
-**SAE Behavior:**
-- The 6-res-jb SAE learned primarily general features
-- True specialists are rare in this particular decomposition
-- Different SAEs (layers, training) may learn different feature types
-
-**Interpretability Challenges:**
-- Finding monosemantic specialists is harder than expected
-- Most features capture combinations of patterns rather than single concepts
-- Manual analysis with diverse datasets is essential for understanding features
-
----
-
-## Project Structure
-
-```
-interpretability-prototyping/
-├── README.md                          # This file
-├── notebooks/
-│   ├── phase_1.ipynb                  # Phase 1 ✅ COMPLETE
-│   └── phase_2_feature_exploration.ipynb # Phase 2 ✅ COMPLETE
-├── src/                               # Future: Refactored code
-├── data/                              
-│   ├── phase1_activations.pt          # Cached activations from Phase 1
-│   └── .gitignore
-├── outputs/                           
-│   └── .gitignore
-├── requirements.txt                   # Python dependencies
-└── .gitignore
-```
-
----
-
-## Installation & Setup
-
-### Prerequisites
-- Python 3.9+
-- 8GB+ RAM
-- Internet connection for downloads
-
-### Environment Setup
-
-```bash
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install --upgrade pip
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
-pip install transformer-lens sae-lens
-pip install transformers datasets einops
-pip install plotly jupyter ipywidgets
-pip install numpy pandas matplotlib
-```
-
-### Quick Start
-
-```bash
-# Launch Jupyter
-jupyter notebook
-
-# Open notebooks in order:
-# 1. notebooks/phase_1.ipynb
-# 2. notebooks/phase_2_feature_exploration.ipynb
-# Run cells sequentially (Shift+Enter)
-```
-
-### Troubleshooting
-
-**Model download stalls:**
-- Use terminal to download: `huggingface-cli download openai-community/gpt2`
-- Copy files to proper cache location
-
-**SAE loading hangs:**
-- Use terminal download then `SAE.load_from_disk(path)`
-- Ensure files are in `~/.cache/sae_lens/`
-
-**Import errors:**
-- Verify virtual environment is activated
-- Reinstall dependencies: `pip install -r requirements.txt`
-
----
-
 ## Key Concepts & Terminology
 
 **Activation / Vector**: The output of a specific layer - an array of numbers representing the model's internal state. These terms are interchangeable.
@@ -1083,6 +852,44 @@ sae_attn = SAE.from_pretrained('gpt2-small-attn-jb', 'blocks.10.attn.hook_result
 ---
 
 ## Progress Log
+
+### [2025-12-03] - Phase 3 Visualization & Token Analysis ✅
+
+**New Visualizations (Cell 12 - Plotly Heatmaps):**
+- **Specialist Scores Heatmap:** Category × SAE layer matrix showing specialist score progression
+- **Top 5 Strongest Features:** Stacked bar chart showing activation magnitudes by layer (reveals ~50 → ~140 increase)
+- **Most Frequent Feature Coverage:** Bar chart demonstrating inverse frequency-depth relationship (51% → 30%)
+- **Layer Progression Line Chart:** Specialist count by layer depth with 7/7 target line
+
+**Token-Level Feature Highlighting (Cell 13):**
+Implemented Anthropic-style per-token activation visualization inspired by the "Scaling Monosemanticity" paper:
+- Individual token highlighting with opacity proportional to activation strength
+- Hover tooltips displaying exact activation values
+- Orange highlighting for target category, gray for non-target categories
+- All 70 texts displayed per specialist feature, organized by category
+- Clickable Neuronpedia links for feature investigation
+
+**Key Insight - Specialists Detect Syntax, Not Topics:**
+Token-level analysis revealed that "specialist" features detect **syntactic/symbolic patterns** rather than high-level topics:
+- **Math specialist** (Feature #22917): Fires on arithmetic operators (`+`, `=`, `^`, `/`) regardless of context
+- **Python specialist** (Feature #15983): Fires on function definition syntax (`):`, `return`, closing parentheses)
+- **Conversational specialist** (Feature #8955): Fires on first-person expressions (`I'm`, `I think`, `I need`)
+- **Cross-domain activation is expected:** Math specialist activates on Python code containing arithmetic; Python specialist activates on math with parentheses
+- **Implication:** SAEs trained on reconstruction loss learn efficient low-level patterns that correlate with semantic categories, not the categories themselves
+
+**Attention & MLP SAE Investigation:**
+Explored using attention-output and MLP-output SAEs to compare specialization patterns:
+- **Hypothesis:** Attention SAEs might show different specialist patterns (token relationships) vs MLP SAEs (token transformations)
+- **Finding:** Pre-trained SAEs for attention (`hook_attn_out`) and MLP (`hook_mlp_out`) outputs are **not available** in Joseph Bloom's GPT-2 Small SAE release
+- **Available hook points:** Only `hook_resid_pre` (residual stream) SAEs are provided
+- **Decision:** Proceeded with residual stream analysis only; attention/MLP comparison would require training custom SAEs (potential Phase 4 work)
+- **Documentation:** Added note to Phase 3 roadmap marking this question as "Not tested - SAEs not available"
+
+**README Enhancements:**
+- Embedded 5 visualization screenshots in Sample Outputs section
+- Added interpretive captions explaining each chart's significance
+- Included ASCII representation of token-level activations for text-based documentation
+- Updated Key Findings with insight #8 on syntax vs. topic detection
 
 ### [2025-12-02] - Phase 3 Completion ✅
 **Duration**: ~6 hours
