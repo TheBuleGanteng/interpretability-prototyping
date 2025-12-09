@@ -500,61 +500,6 @@ fig.write_image("assets/your_chart.png", scale=2)
 - **Reveals inverse relationship between feature generality and layer depth** - quantified via frequency heatmaps
 - **Identifies category-specific processing depths** - some patterns (math) detected early, others (social) require deep processing
 
----
-
-### Phase 4: Training a Custom SAE (Homebrew Version)
-**Goal:** Understand SAE internals by implementing and training one from scratch
-
-**Tasks:**
-- [ ] Implement SAE architecture:
-  - Encoder: Linear layer + ReLU activation
-  - Decoder: Linear layer (tied weights optional)
-- [ ] Implement training loop with:
-  - Reconstruction loss (MSE between input and reconstructed activations)
-  - L1 sparsity penalty
-  - Optional auxiliary losses
-- [ ] Train on collected activations
-- [ ] Monitor training metrics (loss, sparsity, reconstruction quality)
-- [ ] Compare custom SAE performance to pre-trained versions
-- [ ] Tune hyperparameters (L1 coefficient, learning rate, SAE width)
-
-**Key Hyperparameters:**
-- `d_model`: Input dimension (e.g., 768 for GPT-2 small)
-- `d_sae`: SAE feature dimension (typically 4-8x d_model)
-- `l1_coeff`: Sparsity penalty strength (typically 1e-3 to 1e-2)
-- `learning_rate`: Training learning rate (typically 1e-4)
-
----
-
-### Phase 5: Interactive Demo & Documentation
-**Goal:** Package work into reusable, well-documented format
-
-**Tasks:**
-- [ ] Refactor notebook code into modular Python files:
-  - `models.py`: Model loading and activation extraction
-  - `sae.py`: SAE architecture and training
-  - `analysis.py`: Feature analysis utilities
-  - `visualization.py`: Plotting and display functions
-  - `data.py`: Dataset handling and caching
-- [ ] Create clean demo notebook showcasing key capabilities
-- [ ] Write comprehensive documentation
-- [ ] Add example outputs and visualizations to README
-- [ ] (Optional) Build simple Streamlit/Gradio interface
-
----
-
-### Phase 6: Advanced Experiments (Stretch Goals)
-**Goal:** Explore advanced interpretability techniques
-
-**Possible Extensions:**
-- [ ] Steering: Modify model behavior by amplifying/suppressing features
-- [ ] Feature attribution: Which features matter most for specific predictions?
-- [ ] Cross-layer analysis: How features evolve across layers
-- [ ] Automated interpretability: Use an LLM to describe features
-- [ ] Causal interventions: Ablate features and measure impact
-- [ ] Compare interpretability across different model sizes/architectures
-
----
 
 ## Technical Architecture
 
@@ -577,17 +522,6 @@ Feature Analysis:
     - Category specialists (strong in one category, weak elsewhere)
     ↓
 Visualizations & Interactive Exploration
-```
-
-### Future Approach (Phase 4+)
-```
-Input Text
-    ↓
-Model → Activations → Cache Dataset
-    ↓
-Custom SAE Training
-    ↓
-Trained SAE → Feature Analysis → Insights
 ```
 
 ## Key Concepts & Terminology
@@ -853,7 +787,157 @@ sae_attn = SAE.from_pretrained('gpt2-small-attn-jb', 'blocks.10.attn.hook_result
 
 ## Progress Log
 
+
+### Phase 4: Behavioral-Mechanistic Linkage Analysis
+
+#### **Description**
+
+Phase 4 is a Jupyter notebook that extends the mechanistic interpretability research conducted in Phase 3. Building upon the finding that SAE specialist features detect syntactic and symbolic patterns rather than semantic concepts, this phase tests whether that surface-level detection has behavioral consequences for model performance.
+
+The work is motivated by a key question raised in Phase 3: if the "math specialist" feature fires on arithmetic symbols (+, =, ^) rather than mathematical meaning, does the model's mathematical competence depend on those surface patterns being present? Phase 4 designs controlled experiments to answer this question.
+
+This notebook builds on:
+- Phase 3 findings on specialist feature behavior in GPT-2 Small
+- Anthropic's "Scaling Monosemanticity" (2024) methodology for SAE-based interpretability
+- The TransformerLens and SAELens libraries for model access and feature extraction
+
+#### **Objectives**
+
+**Primary Objective**
+Determine whether the syntactic (rather than semantic) nature of specialist features identified in Phase 3 has measurable consequences for model behavior. Specifically: does the model perform differently on semantically equivalent inputs that vary in surface form?
+
+**Secondary Objective**
+Investigate how the model represents semantically equivalent expressions internally. Beyond single specialist features, do symbolic and verbal forms of the same concept produce similar or divergent activation patterns across the full feature space?
+
+#### **Hypotheses**
+
+**H1 (Specialist Activation):** Specialist features will show significantly higher activation for symbolic forms than verbal/prose forms of the same mathematical expression. For example, the math specialist (#22917) will activate more strongly on "2+2" than on "two plus two."
+
+**H2 (Representational Divergence):** Cosine similarity between matched pairs (same concept, different form) will be lower than similarity between unrelated expressions in the same form. That is, "2+2" may be more similar to "5*3" than to "two plus two"—suggesting surface form dominates internal representation.
+
+**H3 (Behavioral Correlation):** Model accuracy on mathematical completions will correlate with specialist activation strength. Inputs that strongly activate the math specialist will be answered correctly more often than inputs that do not.
+
+#### **Test Dataset Design**
+
+**Domains**
+- **Primary:** Mathematical expressions (10-15 matched pairs)
+- **Secondary (optional):** Python code vs. pseudocode, first-person vs. third-person conversational text
+
+#### **Structure**
+Each test case consists of matched expressions representing the same concept in three forms:
+
+| Form | Description | Example |
+|------|-------------|---------|
+| Symbolic | Standard notation with mathematical symbols | `2+2` |
+| Verbal | Written-out numbers and operations | `two plus two` |
+| Prose | Natural language description | `the sum of two and two` |
+
+#### **Math Pairs (Draft)**
+```
+1.  2+2 / two plus two / the sum of two and two → 4
+2.  5*3 / five times three / five multiplied by three → 15
+3.  10/2 / ten divided by two / half of ten → 5
+4.  3^2 / three squared / three to the power of two → 9
+5.  8-3 / eight minus three / three less than eight → 5
+6.  4+5 / four plus five / the sum of four and five → 9
+7.  6*2 / six times two / six multiplied by two → 12
+8.  9/3 / nine divided by three / a third of nine → 3
+9.  7-4 / seven minus four / four less than seven → 3
+10. 2^3 / two cubed / two to the power of three → 8
+11. 1+1 / one plus one / the sum of one and one → 2
+12. 3*4 / three times four / three multiplied by four → 12
+```
+
+#### **Steps**
+
+**Step 4a: Environment Setup and Replication**
+- Import required libraries (torch, TransformerLens, SAELens, plotly, numpy)
+- Load GPT-2 Small model and pre-trained SAEs (layers 8, 10, 11)
+- Define specialist feature IDs from Phase 3 findings:
+  - Math specialist: #22917 (layer 8)
+  - Python specialist: #15983 (layer 10-11)
+  - Conversational specialist: #8955 (layer 11)
+- Replicate activation extraction functions with proper attention masking (the Phase 3 fix)
+- Verify setup by reproducing a sample Phase 3 result
+
+**Step 4b: Construct Matched Pairs Dataset**
+- Define the matched pairs data structure (symbolic, verbal, prose, expected answer)
+- Create 12-15 math expression pairs covering basic operations (+, -, *, /, ^)
+- Optionally extend to Python code/pseudocode pairs and conversational pairs
+- Implement tokenization for each form to enable token-level analysis
+
+**Step 4c: Activation Analysis**
+- **Specialist Activation Extraction:** For each input form, extract activation of the relevant specialist feature
+- **Full Activation Vector Extraction:** Extract complete SAE activation vectors (all 24,576 features) for each input
+- **Cosine Similarity Calculation:** Compute pairwise cosine similarity between:
+  - Matched pairs (same concept, different form)
+  - Unmatched pairs within same form (different concept, same form)
+  - Cross-form baseline (different concept, different form)
+
+**Step 4d: Behavioral Analysis**
+- **Prompt Construction:** Create completion prompts for each form (e.g., "2+2=" vs. "two plus two equals")
+- **Model Inference:** Run GPT-2 Small on each prompt and capture:
+  - Top predicted token(s)
+  - Probability assigned to correct answer
+  - Whether completion is correct (binary)
+- **Accuracy Tabulation:** Record accuracy rates by form (symbolic vs. verbal vs. prose)
+
+**Step 4e: Visualization and Comparison**
+- **Grouped Bar Chart:** Specialist activation strength by form for each matched pair
+- **Cosine Similarity Heatmap:** Full activation similarity matrix across all inputs
+- **Accuracy Table/Bar Chart:** Model accuracy broken down by input form
+- **Scatter Plot:** Specialist activation difference (x-axis) vs. cosine similarity (y-axis), colored by accuracy outcome
+- **Summary Statistics:** Mean activation, mean similarity, accuracy rates with confidence intervals
+
+#### **Expected Outputs**
+
+**Quantitative Results**
+- Table of specialist activation values for each input (symbolic, verbal, prose)
+- Cosine similarity matrix for all inputs
+- Accuracy rates by form with statistical comparison
+
+**Visualizations**
+1. Grouped bar chart: Specialist activation by form
+2. Heatmap: Full activation cosine similarity matrix
+3. Bar chart or table: Accuracy by input form
+4. Scatter plot: Activation difference vs. similarity, colored by accuracy
+
+**Narrative Summary**
+- Key findings paragraph suitable for inclusion in paper update
+- Assessment of each hypothesis (supported/not supported/inconclusive)
+- Limitations and caveats
+- Suggested next steps
+
+#### **Success Criteria**
+
+**Strong Positive Finding**
+All three hypotheses supported:
+- Specialist activation differs significantly by form (H1)
+- Cosine similarity reveals form-based clustering rather than concept-based clustering (H2)
+- Accuracy correlates with activation strength (H3)
+
+This would demonstrate that interpretability findings (specialist features detect syntax, not semantics) have direct behavioral implications (model performance depends on surface form).
+
+**Partial Finding**
+H1 supported but H2 or H3 inconclusive:
+- Confirms Phase 3 specialist findings
+- Suggests conceptual understanding may exist elsewhere in the model (if H2 not supported)
+- Still valuable as validation and extension of prior work
+
+**Null Finding**
+Specialist activation does not differ by form, or accuracy is uniform across forms:
+- Would challenge the Phase 3 interpretation
+- Still publishable as a rigorous negative result
+- Would prompt revisiting the specialist identification methodology
+
+**Unexpected Finding**
+High cosine similarity despite activation differences, or accuracy patterns that don't match activation patterns:
+- Could reveal that semantic processing exists in features not captured by specialist analysis
+- Would motivate circuit-level investigation (tracing how features connect)
+
+
 ### [2025-12-03] - Phase 3 Visualization & Token Analysis ✅
+**Status: Completed**
 
 **New Visualizations (Cell 12 - Plotly Heatmaps):**
 - **Specialist Scores Heatmap:** Category × SAE layer matrix showing specialist score progression
