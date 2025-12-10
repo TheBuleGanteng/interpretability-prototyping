@@ -825,9 +825,9 @@ Investigate how the model represents semantically equivalent expressions interna
 - ✅ **Cells 1-14:** Baseline verification replicating Phase 3 methodology (specialist identification across 4 SAE layers)
 - ✅ **Cell 15:** H1 testing - Specialist activation comparison across surface forms
 - ✅ **Cell 16:** H2 testing - Feature population overlap analysis across surface forms
+- ✅ **Cell 17:** H3 testing - Cosine similarity analysis
 
 **Remaining:**
-- ⬜ **Cell 17 (planned):** H3 testing - Cosine similarity analysis
 - ⬜ **Cell 18 (planned):** H4 testing - Behavioral accuracy experiments
 
 #### **Key Findings (Preliminary)**
@@ -862,6 +862,27 @@ Feature population analysis reveals distinct activation patterns by surface form
 **Implication:** GPT-2 has distinct feature populations for:
 - "Mathematical notation" (activated by symbolic forms)
 - "Natural language about math" (activated by verbal & prose forms)
+
+**H3 Result: ✅ STRONGLY SUPPORTED**
+
+Cosine similarity analysis reveals that GPT-2's internal representations cluster by **surface form** rather than by **semantic concept**:
+
+| Metric | Value |
+|--------|-------|
+| Within-CONCEPT similarity (same concept, different form) | 0.397 ± 0.309 |
+| Within-FORM similarity (same form, different concept) | 0.530 ± 0.252 |
+| Difference | +0.133 (form > concept) |
+| Ratio | 1.33× |
+| Statistical significance | p = 4.18 × 10⁻⁴ |
+
+**Interpretation:** Two different mathematical concepts written in symbolic notation (e.g., `∫x²dx` and `sin²θ + cos²θ = 1`) are **more similar** to each other internally than the *same* concept expressed in different forms (e.g., `2+2` vs. "two plus two"). This confirms that surface form dominates internal representation.
+
+**Key Patterns:**
+- **Form-based clustering is statistically significant** (p < 0.001)
+- Representations prioritize **syntactic similarity** over **semantic equivalence**
+- This reinforces H1 and H2: specialist features detect patterns, not meaning
+
+**Implication:** GPT-2 does not achieve form-invariant conceptual understanding for mathematical expressions. The model's internal representations are shaped more by how concepts are written than by what they mean.
 
 #### **Test Dataset Design**
 
@@ -928,7 +949,7 @@ Each test case consists of matched expressions representing the same concept in 
 - Identify unique features per form
 - Visualize with overlap bar charts and activation heatmaps
 
-**Step 4e: H3 - Representational Clustering** ⬜ PLANNED
+**Step 4e: H3 - Representational Clustering** ✅ COMPLETE
 - Extract complete SAE activation vectors (all 24,576 features) for each input
 - Compute pairwise cosine similarity between:
   - Matched pairs (same concept, different form)
@@ -946,7 +967,7 @@ Each test case consists of matched expressions representing the same concept in 
 **Quantitative Results**
 - ✅ Table of specialist activation values for each input (symbolic, verbal, prose)
 - ✅ Feature overlap statistics across surface forms
-- ⬜ Cosine similarity matrix for all inputs
+- ✅ Cosine similarity matrix for all inputs
 - ⬜ Accuracy rates by form with statistical comparison
 
 **Visualizations**
@@ -954,13 +975,13 @@ Each test case consists of matched expressions representing the same concept in 
 2. ✅ Per-pair activation table with Neuronpedia links
 3. ✅ Feature overlap bar chart across layers
 4. ✅ Feature activation heatmap by surface form
-5. ⬜ Cosine similarity heatmap
+5. ✅ Cosine similarity heatmap
 6. ⬜ Accuracy by input form comparison
 
 **Narrative Summary**
 - ✅ H1 assessment: STRONG SUPPORT - specialists detect syntax, not semantics
 - ✅ H2 assessment: SUPPORTED - distinct feature populations by surface form
-- ⬜ H3 assessment: Pending cosine similarity analysis
+- ✅ H3 assessment: STRONGLY SUPPORTED - surface form dominates internal representation (1.33× higher within-form similarity)
 - ⬜ H4 assessment: Pending behavioral testing
 
 #### **Success Criteria**
@@ -969,7 +990,7 @@ Each test case consists of matched expressions representing the same concept in 
 All four hypotheses supported:
 - ✅ Specialist activation differs significantly by form (H1)
 - ✅ Feature populations diverge by surface form with verbal/prose clustering (H2)
-- ⬜ Cosine similarity reveals form-based clustering rather than concept-based clustering (H3)
+- ✅ Cosine similarity reveals form-based clustering rather than concept-based clustering (H3)
 - ⬜ Accuracy correlates with activation strength (H4)
 
 This would demonstrate that interpretability findings (specialist features detect syntax, not semantics) have direct behavioral implications (model performance depends on surface form).
