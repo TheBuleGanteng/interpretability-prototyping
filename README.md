@@ -346,11 +346,11 @@ Specialist count increases monotonically with depth: 5/7 (layer 6) → 6/7 (laye
 | Category | Layer 6 | Layer 8 | Layer 10 | Layer 11 |
 |----------|---------|---------|----------|----------|
 | Python | 1 | 1 | 6 | 6 |
-| URLs | 3 | 4 | 3 | 5 |
+| URLs | 1 | 1 | 1 | 2 |
 | Math | 6 | 8 | 7 | 7 |
-| Non-English | 8 | 7 | 4 | 4 |
-| Social | 0 | 1 | 5 | 8 |
-| Formal | 2 | 4 | 3 | 4 |
+| Non-English | 1 | 1 | 1 | 2 |
+| Social | 0 | 1 | 3 | 8 |
+| Formal | 1 | 1 | 2 | 2 |
 | Conversational | 0 | 0 | 1 | 2 |
 
 *Token-Level Highlighting Example (Conversational Specialist - Feature #8955):*
